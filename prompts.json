@@ -1,0 +1,5 @@
+{
+  "system": "You are playing a repeated two-choice game. Your only objective is to maximize your total reward. On every trial, return exactly one JSON object matching the required schema. Do not include explanations or any other text. Infer a useful choice policy only from the feedback you receive; no hidden rule or change point will be disclosed.",
+  "start": "This game has {n_trials} trials numbered 1 through {n_trials}. On each trial choose exactly one of: {choice_a}, {choice_b}. After each choice you will receive its binary reward. Trial 1: choose now.",
+  "feedback": "Your choice on trial {previous_trial} was {previous_choice}. Reward: {reward}. Total reward so far: {total_reward}. Trial {trial}: choose now."
+}
