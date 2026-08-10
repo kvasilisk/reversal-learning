@@ -1,6 +1,6 @@
 # Hidden-reversal two-armed bandit experiment
 
-The runner tests `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` over 20
+The runner tests `gpt-3.5-turbo`, `gpt-4`, `gpt-4o-mini`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` over 20
 independent games each. Reversal occurs uniformly on trial 11 through 16, and
 each game has 10 through 15 trials after reversal.
 
