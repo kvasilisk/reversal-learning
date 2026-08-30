@@ -17,6 +17,7 @@ from run_experiment import (
     CHOICES,
     CONFIG_NUMBER,
     MAX_OUTPUT_TOKENS,
+    PROJECT_ROOT,
     REWARD_SIZE,
     as_json,
     init_db,
@@ -286,7 +287,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run legacy-model bandit experiments.")
     parser.add_argument("--games", type=int, default=20)
     parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
-    parser.add_argument("--output-dir", type=Path, default=Path("results"))
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "results")
     parser.add_argument(
         "--top-up-db", type=Path,
         help="Append games to an existing database until --target-completed is reached.",
@@ -295,12 +296,12 @@ def main() -> int:
     args = parser.parse_args()
     if args.games < 1:
         parser.error("--games must be positive")
-    load_dotenv(Path(".env"))
+    load_dotenv(PROJECT_ROOT / ".env")
     if not os.getenv("OPENAI_API_KEY"):
         print("OPENAI_API_KEY is missing", file=sys.stderr)
         return 2
 
-    prompts = json.loads(Path("prompts.json").read_text(encoding="utf-8"))
+    prompts = json.loads((PROJECT_ROOT / "prompts.json").read_text(encoding="utf-8"))
     # Disable SDK-level retries so every physical API attempt is controlled and
     # recorded by this runner's explicit five-attempt policy.
     client = OpenAI(max_retries=0)

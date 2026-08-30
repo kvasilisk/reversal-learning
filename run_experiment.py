@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 
+PROJECT_ROOT = Path(__file__).resolve().parent
 MODELS = ("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna")
 CHOICES = ("A", "B")
 CONFIG_NUMBER = 1
@@ -253,16 +254,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run hidden-reversal bandit experiments.")
     parser.add_argument("--games", type=int, default=20)
     parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
-    parser.add_argument("--output-dir", type=Path, default=Path("results"))
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "results")
     args = parser.parse_args()
     if args.games < 1:
         parser.error("--games must be positive")
 
-    load_dotenv(Path(".env"))
+    load_dotenv(PROJECT_ROOT / ".env")
     if not os.getenv("OPENAI_API_KEY"):
         print("OPENAI_API_KEY is missing", file=sys.stderr)
         return 2
-    prompts = json.loads(Path("prompts.json").read_text(encoding="utf-8"))
+    prompts = json.loads((PROJECT_ROOT / "prompts.json").read_text(encoding="utf-8"))
     client = OpenAI()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     failures = 0
