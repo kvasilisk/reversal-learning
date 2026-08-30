@@ -1,15 +1,13 @@
 # Hidden-reversal two-armed bandit experiment
 
-<<<<<<< HEAD
-The runner tests `gpt-3.5-turbo`, `gpt-4`, `gpt-4o-mini`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` over 20
-independent games each. Reversal occurs uniformly on trial 11 through 16, and
-each game has 10 through 15 trials after reversal.
-=======
-This project runs two-armed bandit experiments against OpenAI models and stores
-each run in a SQLite database under `results/`. Files use a `.sql` suffix to
-match the experiment specification, but they are binary SQLite databases rather
-than SQL text dumps.
->>>>>>> 9db52af (Improve repository reproducibility)
+The two runners test `gpt-3.5-turbo`, `gpt-4`, `gpt-4o-mini`, `gpt-5.6-sol`,
+`gpt-5.6-terra`, and `gpt-5.6-luna`. By default, each selected model runs 20
+independent games. Reversal occurs uniformly on trial 11 through 16, and each
+game has 10 through 15 trials after reversal.
+
+Results are stored in SQLite databases under `results/`. Files use a `.sql`
+suffix to match the experiment specification, but they are binary SQLite
+databases rather than SQL text dumps.
 
 ## Setup
 
