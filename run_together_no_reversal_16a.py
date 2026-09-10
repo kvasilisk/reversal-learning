@@ -30,6 +30,8 @@ MAX_TOKENS = 512
 N_TRIALS_TOLD = 20
 N_TRIALS_ACTUAL = 10
 INITIAL_CONTINGENCY = {"B": 1, "A": 0}
+PROBE_CONTINGENCY = {"A": 1, "B": 0}
+PROBE_TRIALS = frozenset({4, 7})
 CHOICES = ("A", "B")
 FORMAT_INSTRUCTION = (
     'Respond with a JSON object containing exactly one key, "choice", with no '
@@ -135,6 +137,8 @@ def init_db(path: Path) -> sqlite3.Connection:
             response_json TEXT,
             raw_output TEXT,
             choice TEXT,
+            contingency_json TEXT,
+            is_probe INTEGER NOT NULL DEFAULT 0,
             reward INTEGER,
             cumulative_reward INTEGER,
             latency_ms REAL,
@@ -230,16 +234,21 @@ def run_game(
             )
             db.commit()
             choice = parse_choice(raw_output)
-            reward = INITIAL_CONTINGENCY[choice]
+            is_probe = trial_number in PROBE_TRIALS
+            contingency = PROBE_CONTINGENCY if is_probe else INITIAL_CONTINGENCY
+            reward = contingency[choice]
             total_reward += reward
             answers.append(choice)
             db.execute(
-                """UPDATE trial SET response_json=?, raw_output=?, choice=?, reward=?,
-                   cumulative_reward=?, latency_ms=? WHERE id=?""",
+                """UPDATE trial SET response_json=?, raw_output=?, choice=?,
+                   contingency_json=?, is_probe=?, reward=?, cumulative_reward=?,
+                   latency_ms=? WHERE id=?""",
                 (
                     as_json(response.model_dump(mode="json", exclude_none=False)),
                     raw_output,
                     choice,
+                    as_json(contingency),
+                    int(is_probe),
                     reward,
                     total_reward,
                     latency_ms,
@@ -249,7 +258,8 @@ def run_game(
             db.commit()
             print(
                 f"  RECV actual_trial={trial_number}/{N_TRIALS_ACTUAL}: "
-                f"choice={choice} reward={reward} total={total_reward}",
+                f"choice={choice} reward={reward} total={total_reward} "
+                f"probe={is_probe} contingency={contingency}",
                 flush=True,
             )
             messages.append({"role": "assistant", "content": raw_output})
@@ -344,7 +354,11 @@ def main() -> int:
 
     print(f"DATABASE {db_path}", flush=True)
     print(f"TASK_MODE {TASK_MODE}", flush=True)
-    print(f"CONTINGENCY {INITIAL_CONTINGENCY} (constant; no reversal)", flush=True)
+    print(
+        f"CONTINGENCY {INITIAL_CONTINGENCY}; isolated probe trials "
+        f"{sorted(PROBE_TRIALS)} use {PROBE_CONTINGENCY}; no permanent reversal",
+        flush=True,
+    )
     print(
         "INTENTIONAL TRIAL-COUNT MISMATCH "
         f"n_trials_told={N_TRIALS_TOLD} n_trials_actual={N_TRIALS_ACTUAL}",
@@ -365,6 +379,10 @@ def main() -> int:
             "intentional_trial_count_mismatch": True,
             "initial_contingency": INITIAL_CONTINGENCY,
             "post_reversal_contingency": None,
+            "probe_trials": sorted(PROBE_TRIALS),
+            "probe_contingency": PROBE_CONTINGENCY,
+            "permanent_reversal": False,
+            "reward_size": 1,
         }
         experiment_id = db.execute(
             """INSERT INTO experiment
