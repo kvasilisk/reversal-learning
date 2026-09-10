@@ -65,3 +65,5 @@ contract with JSON Schema and explicit prompt text. Any malformed response is a
 behavioral/format error and must not be silently normalized.
 
 For the requested run, trials 4 and 7 are fixed, isolated probe trials using `{"A": 1, "B": 0}`. Every other actual trial uses `{"B": 1, "A": 0}`. After each probe, the next trial immediately returns to the initial contingency; this is not a permanent reversal. Store the applied contingency and probe flag on every trial.
+
+Apply the same design to an OpenAI API run with `gpt-4.1-nano`, `gpt-5.4-nano`, and `gpt-4o-mini`: 10 independent games per model, temperature 0.7, 20 trials stated in the prompt, and 10 trials actually run.

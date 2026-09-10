@@ -19,16 +19,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 PROVIDER = "openai"
 DESIGN = "openai_no_reversal_nano"
 MODELS = ("gpt-4.1-nano", "gpt-5.4-nano", "gpt-4o-mini")
-REQUESTED_MODELS = ("gpt-4.1-nano", "gpt-5.4-nano", "gpt-5-nano")
-MODEL_SUBSTITUTIONS = {
-    "gpt-5-nano": "gpt-4o-mini",
-}
 TASK_MODE = "no_reversal"
 TEMPERATURE = 0.7
 MAX_OUTPUT_TOKENS = 64
 N_TRIALS_TOLD = 20
 N_TRIALS_ACTUAL = 10
 INITIAL_CONTINGENCY = {"B": 1, "A": 0}
+PROBE_CONTINGENCY = {"A": 1, "B": 0}
+PROBE_TRIALS = frozenset({4, 7})
 CHOICES = ("A", "B")
 
 CHOICE_FORMAT = {
@@ -67,11 +65,6 @@ def verify_models(client: OpenAI) -> None:
     for model in MODELS:
         status = "available" if model in live_ids else "MISSING"
         print(f"  {status}: {model}", flush=True)
-    print(
-        "  substitution: gpt-5-nano -> gpt-4o-mini "
-        "(required non-reasoning mode and temperature=0.7)",
-        flush=True,
-    )
     if missing:
         raise RuntimeError(f"OpenAI live model list is missing: {', '.join(missing)}")
 
@@ -122,6 +115,8 @@ def init_db(path: Path) -> sqlite3.Connection:
             response_id TEXT,
             raw_output TEXT,
             choice TEXT,
+            contingency_json TEXT,
+            is_probe INTEGER NOT NULL DEFAULT 0,
             reward INTEGER,
             cumulative_reward INTEGER,
             input_tokens INTEGER,
@@ -245,17 +240,21 @@ def run_game(
             db.commit()
 
             choice = parse_choice(raw_output)
-            reward = INITIAL_CONTINGENCY[choice]
+            is_probe = trial_number in PROBE_TRIALS
+            contingency = PROBE_CONTINGENCY if is_probe else INITIAL_CONTINGENCY
+            reward = contingency[choice]
             total_reward += reward
             answers.append(choice)
             db.execute(
-                """UPDATE trial SET choice=?, reward=?, cumulative_reward=? WHERE id=?""",
-                (choice, reward, total_reward, trial_id),
+                """UPDATE trial SET choice=?, contingency_json=?, is_probe=?,
+                   reward=?, cumulative_reward=? WHERE id=?""",
+                (choice, as_json(contingency), int(is_probe), reward, total_reward, trial_id),
             )
             db.commit()
             print(
                 f"  RECV actual_trial={trial_number}/{N_TRIALS_ACTUAL}: "
-                f"choice={choice} reward={reward} total={total_reward}",
+                f"choice={choice} reward={reward} total={total_reward} "
+                f"probe={is_probe} contingency={contingency}",
                 flush=True,
             )
             previous_response_id = response.id
@@ -365,26 +364,20 @@ def main() -> int:
 
     print(f"DATABASE {db_path}", flush=True)
     print(f"TASK_MODE {TASK_MODE}", flush=True)
-    print(f"CONTINGENCY {INITIAL_CONTINGENCY} (constant; no reversal)", flush=True)
+    print(
+        f"CONTINGENCY {INITIAL_CONTINGENCY}; isolated probe trials "
+        f"{sorted(PROBE_TRIALS)} use {PROBE_CONTINGENCY}; no permanent reversal",
+        flush=True,
+    )
     print(
         "INTENTIONAL TRIAL-COUNT MISMATCH "
         f"n_trials_told={N_TRIALS_TOLD} n_trials_actual={N_TRIALS_ACTUAL}",
         flush=True,
     )
 
-    requested_by_actual = {
-        "gpt-4.1-nano": "gpt-4.1-nano",
-        "gpt-5.4-nano": "gpt-5.4-nano",
-        "gpt-4o-mini": "gpt-5-nano",
-    }
     for model in MODELS:
-        requested_model = requested_by_actual[model]
+        requested_model = model
         substitution_reason = None
-        if requested_model != model:
-            substitution_reason = (
-                "gpt-5-nano rejects reasoning effort none and temperature=0.7; "
-                "substituted callable low-cost non-reasoning gpt-4o-mini"
-            )
         reasoning_effort = "none" if model == "gpt-5.4-nano" else "native_non_reasoning"
         config = {
             "design": DESIGN,
@@ -402,6 +395,10 @@ def main() -> int:
             "intentional_trial_count_mismatch": True,
             "initial_contingency": INITIAL_CONTINGENCY,
             "post_reversal_contingency": None,
+            "probe_trials": sorted(PROBE_TRIALS),
+            "probe_contingency": PROBE_CONTINGENCY,
+            "permanent_reversal": False,
+            "reward_size": 1,
         }
         experiment_id = db.execute(
             """INSERT INTO experiment
