@@ -1,0 +1,11 @@
+provider,model,game_number,answer_1,answer_2,answer_3,answer_4,answer_5,answer_6,answer_7,answer_8,answer_9,answer_10,answer_11,answer_12,answer_13,answer_14,answer_15,answer_16,answer_17,answer_18,answer_19,answer_20
+openai,gpt-3.5-turbo,1,A,B,B,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,2,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,3,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,4,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,5,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,6,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,7,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,8,A,B,B,B,A,B,A,A,B,B,A,B,A,B,A,B,A,B,A,B
+openai,gpt-3.5-turbo,9,A,A,A,A,A,A,A,A,A,A,B,A,B,A,B,B,A,B,B,B
+openai,gpt-3.5-turbo,10,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B,A,B

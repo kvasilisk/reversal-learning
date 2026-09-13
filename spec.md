@@ -67,3 +67,7 @@ behavioral/format error and must not be silently normalized.
 For the requested run, trials 4 and 7 are fixed, isolated probe trials using `{"A": 1, "B": 0}`. Every other actual trial uses `{"B": 1, "A": 0}`. After each probe, the next trial immediately returns to the initial contingency; this is not a permanent reversal. Store the applied contingency and probe flag on every trial.
 
 Apply the same design to an OpenAI API run with `gpt-4.1-nano`, `gpt-5.4-nano`, and `gpt-4o-mini`: 10 independent games per model, temperature 0.7, 20 trials stated in the prompt, and 10 trials actually run.
+
+## OpenAI 20-trial fixed-probe run
+
+Run 10 independent games for each of `gpt-5-nano`, `gpt-4.1-nano`, `gpt-4o-mini`, `gpt-5.4-nano`, `gpt-5.6-luna`, `gpt-3.5-turbo`, `gpt-4.1-mini`, `gpt-5.4-mini`, `gpt-4o`, and `gpt-5.6-terra` through the OpenAI API. Use 20 stated and 20 actual trials per game at temperature 0.7. Trials 4, 7, 14, and 16 are isolated probes using `{"A":1,"B":0}`; all other trials use `{"B":1,"A":0}`. There is no permanent reversal.

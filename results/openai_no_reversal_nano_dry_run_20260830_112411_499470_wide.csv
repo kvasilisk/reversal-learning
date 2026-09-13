@@ -1,0 +1,4 @@
+provider,model,game_number,answer_1,answer_2,answer_3,answer_4,answer_5,answer_6,answer_7,answer_8,answer_9,answer_10
+openai,gpt-4.1-nano,1,A,A,A,A,A,A,A,A,A,A
+openai,gpt-5.4-nano,1,A,B,B,B,B,B,B,B,B,B
+openai,gpt-4o-mini,1,A,B,B,B,B,B,B,B,B,B

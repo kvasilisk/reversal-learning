@@ -17,16 +17,27 @@ from openai import OpenAI
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 PROVIDER = "openai"
-DESIGN = "openai_no_reversal_nano"
-MODELS = ("gpt-4.1-nano", "gpt-5.4-nano", "gpt-4o-mini")
+DESIGN = "openai_fixed_probe_20"
+MODELS = (
+    "gpt-5-nano",
+    "gpt-4.1-nano",
+    "gpt-4o-mini",
+    "gpt-5.4-nano",
+    "gpt-5.6-luna",
+    "gpt-3.5-turbo",
+    "gpt-4.1-mini",
+    "gpt-5.4-mini",
+    "gpt-4o",
+    "gpt-5.6-terra",
+)
 TASK_MODE = "no_reversal"
 TEMPERATURE = 0.7
 MAX_OUTPUT_TOKENS = 64
 N_TRIALS_TOLD = 20
-N_TRIALS_ACTUAL = 10
+N_TRIALS_ACTUAL = 20
 INITIAL_CONTINGENCY = {"B": 1, "A": 0}
 PROBE_CONTINGENCY = {"A": 1, "B": 0}
-PROBE_TRIALS = frozenset({4, 7})
+PROBE_TRIALS = frozenset({4, 7, 14, 16})
 CHOICES = ("A", "B")
 
 CHOICE_FORMAT = {
@@ -58,11 +69,11 @@ def as_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def verify_models(client: OpenAI) -> None:
+def verify_models(client: OpenAI, models: list[str] | tuple[str, ...] = MODELS) -> None:
     live_ids = {model.id for model in client.models.list().data}
-    missing = [model for model in MODELS if model not in live_ids]
+    missing = [model for model in models if model not in live_ids]
     print("LIVE MODEL VERIFICATION", flush=True)
-    for model in MODELS:
+    for model in models:
         status = "available" if model in live_ids else "MISSING"
         print(f"  {status}: {model}", flush=True)
     if missing:
@@ -180,7 +191,7 @@ def run_game(
         flush=True,
     )
     print(
-        "  INTENTIONAL TRIAL-COUNT MISMATCH: "
+        "  TRIAL COUNTS: "
         f"n_trials_told={N_TRIALS_TOLD}; n_trials_actual={N_TRIALS_ACTUAL}",
         flush=True,
     )
@@ -198,13 +209,23 @@ def run_game(
         request: dict[str, Any] = {
             "model": model,
             "instructions": system_prompt,
-            "input": next_input,
+            "input": (
+                f"Respond in JSON. {next_input}"
+                if model == "gpt-3.5-turbo"
+                else next_input
+            ),
             "temperature": TEMPERATURE,
             "max_output_tokens": MAX_OUTPUT_TOKENS,
-            "text": {"format": CHOICE_FORMAT},
+            "text": {
+                "format": (
+                    {"type": "json_object"}
+                    if model == "gpt-3.5-turbo"
+                    else CHOICE_FORMAT
+                )
+            },
             "store": True,
         }
-        if model == "gpt-5.4-nano":
+        if model.startswith(("gpt-5.4-", "gpt-5.6-")):
             request["reasoning"] = {"effort": "none"}
         if previous_response_id:
             request["previous_response_id"] = previous_response_id
@@ -317,10 +338,14 @@ def write_and_print_wide_summary(path: Path, rows: list[dict[str, Any]]) -> None
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run standalone OpenAI no-reversal nano experiment."
+        description="Run OpenAI 20-trial fixed-probe experiment."
     )
     parser.add_argument("--games", type=int, default=10, help="Games per model.")
     parser.add_argument("--dry-run", action="store_true", help="Run one game per model.")
+    parser.add_argument(
+        "--models", nargs="+", choices=MODELS, default=list(MODELS),
+        help="Models to run (default: all configured models).",
+    )
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "results")
     args = parser.parse_args()
     if args.games < 1:
@@ -333,7 +358,7 @@ def main() -> int:
         return 2
     client = OpenAI(timeout=120, max_retries=2)
     try:
-        verify_models(client)
+        verify_models(client, args.models)
     except Exception as exc:
         print(f"Live model verification failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
@@ -356,8 +381,8 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     label = "dry_run" if args.dry_run else "full_run"
     stamp = utc_stamp()
-    db_path = args.output_dir / f"openai_no_reversal_nano_{label}_{stamp}.sql"
-    csv_path = args.output_dir / f"openai_no_reversal_nano_{label}_{stamp}_wide.csv"
+    db_path = args.output_dir / f"openai_fixed_probe_20_{label}_{len(args.models)}models_{stamp}.sql"
+    csv_path = args.output_dir / f"openai_fixed_probe_20_{label}_{len(args.models)}models_{stamp}_wide.csv"
     db = init_db(db_path)
     rows: list[dict[str, Any]] = []
     failures = 0
@@ -370,15 +395,18 @@ def main() -> int:
         flush=True,
     )
     print(
-        "INTENTIONAL TRIAL-COUNT MISMATCH "
+        "TRIAL COUNTS "
         f"n_trials_told={N_TRIALS_TOLD} n_trials_actual={N_TRIALS_ACTUAL}",
         flush=True,
     )
 
-    for model in MODELS:
+    for model in args.models:
         requested_model = model
         substitution_reason = None
-        reasoning_effort = "none" if model == "gpt-5.4-nano" else "native_non_reasoning"
+        reasoning_effort = (
+            "none" if model.startswith(("gpt-5.4-", "gpt-5.6-"))
+            else "model_default"
+        )
         config = {
             "design": DESIGN,
             "provider": PROVIDER,
@@ -392,7 +420,7 @@ def main() -> int:
             "games": games_per_model,
             "n_trials_told": N_TRIALS_TOLD,
             "n_trials_actual": N_TRIALS_ACTUAL,
-            "intentional_trial_count_mismatch": True,
+            "intentional_trial_count_mismatch": False,
             "initial_contingency": INITIAL_CONTINGENCY,
             "post_reversal_contingency": None,
             "probe_trials": sorted(PROBE_TRIALS),
@@ -412,7 +440,7 @@ def main() -> int:
                 now_iso(), DESIGN, PROVIDER, requested_model, model,
                 substitution_reason, TASK_MODE, TEMPERATURE, reasoning_effort,
                 MAX_OUTPUT_TOKENS, games_per_model, N_TRIALS_TOLD,
-                N_TRIALS_ACTUAL, 1, as_json(INITIAL_CONTINGENCY),
+                N_TRIALS_ACTUAL, 0, as_json(INITIAL_CONTINGENCY),
                 as_json(stored_prompts), as_json(config),
             ),
         ).lastrowid
@@ -441,7 +469,7 @@ def main() -> int:
     write_and_print_wide_summary(csv_path, rows)
     db.close()
     print(
-        f"\nFinished: models={len(MODELS)} games_per_model={games_per_model} "
+        f"\nFinished: models={len(args.models)} games_per_model={games_per_model} "
         f"games_total={len(rows)} failures={failures}",
         flush=True,
     )
